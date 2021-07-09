@@ -107,7 +107,7 @@ CORS(app)
 #address of node in port 5000
 node_address = str(uuid4()).replace('-', '')
 
-
+abcd=2
 # creating blockchain from the class 
 
 blockchain = Blockchain()
