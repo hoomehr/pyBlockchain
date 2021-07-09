@@ -5,7 +5,8 @@ import datetime
 import hashlib
 import json
 from flask import Flask, jsonify, request
-import requests
+from flask_restful import Resource, Api
+from flask_cors import CORS
 from  uuid import uuid4
 from urllib.parse import urlparse
 
@@ -83,7 +84,7 @@ class Blockchain:
          max_length= len(self.chain)
          
          for nodes in network:
-                response = requests.get(f'http://{nodes}/get_chain')
+                response = request.get(f'http://{nodes}/get_chain')
                 if response.status_code == 200:
                     length = response.json()['length']
                     chain = response.json()['chain']
@@ -101,6 +102,7 @@ class Blockchain:
 # creating WebApp using Flask : 
     
 app = Flask(__name__)
+CORS(app)
 #app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 #address of node in port 5000
 node_address = str(uuid4()).replace('-', '')
@@ -197,5 +199,5 @@ def replace_chain():
     return jsonify(response), 200
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
 
