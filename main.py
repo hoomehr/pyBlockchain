@@ -198,6 +198,5 @@ def replace_chain():
                   'current chain': blockchain.chain}
     return jsonify(response), 200
 
-if __name__ == '__main__':
-    app.run()
+
 
