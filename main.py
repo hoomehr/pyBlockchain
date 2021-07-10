@@ -104,7 +104,7 @@ class Blockchain:
 # creating WebApp using Flask : 
     
 app = Flask(__name__)
-CORS(app)
+
 #app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 #address of node in port 5000
 node_address = str(uuid4()).replace('-', '')
