@@ -15,7 +15,7 @@ class Blockchain:
          self.chain = []
          self.transactions=[]
          #genesis block is below
-         self.create_block(proof = 1, previous_hash='0' )
+         self.create_block(proof = 10, previous_hash='1' )
          self.nodes = set()
          
      def create_block(self, proof, previous_hash):
@@ -84,7 +84,7 @@ class Blockchain:
          max_length= len(self.chain)
          
          for node in network:
-                response = request.get(f'https://{node}/get_chain')
+                response = requests.get(f'https://{node}/get_chain')
                 if response.status_code == 200:
                     length = response.json()['length']
                     chain = response.json()['chain']
