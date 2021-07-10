@@ -198,6 +198,3 @@ def replace_chain():
         response={'message' : 'good , the chain is the largest',
                   'current chain': blockchain.chain}
     return jsonify(response), 200
-
-if __name__ == '__main__':
-    app.run(threading=True)
