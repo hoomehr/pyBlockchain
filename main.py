@@ -233,7 +233,7 @@ def autoTransact():
 
 sched = BackgroundScheduler(daemon=True)
 sched.add_job(autoMiner,'interval',seconds=0.5,max_instances=10000)
-#sched.add_job(autoNodeCheck,'interval',seconds=21,max_instances=100)
+sched.add_job(autoNodeCheck,'interval',seconds=10,max_instances=100)
 sched.add_job(autoTransact,'interval',seconds=0.1,max_instances=10000)
 sched.start()
 
