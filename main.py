@@ -232,9 +232,9 @@ def autoTransact():
     
 
 sched = BackgroundScheduler(daemon=True)
-sched.add_job(autoMiner,'interval',seconds=0.5,max_instances=10000)
+sched.add_job(autoMiner,'interval',seconds=20,max_instances=10000)
 sched.add_job(autoNodeCheck,'interval',seconds=120,max_instances=100)
-sched.add_job(autoTransact,'interval',seconds=0.1,max_instances=10000)
+sched.add_job(autoTransact,'interval',seconds=1,max_instances=10000)
 sched.start()
 
 #app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
@@ -352,7 +352,7 @@ def connect_node():
 
 @app.route('/replace_chain', methods=['GET'])
 def replace_chain():
-    is_chain_valid =blockchain.replace_chain()
+    is_chain_valid = blockchain.replace_chain()
     if is_chain_valid : 
         response={'message':'the nodes had different chain , it\'s replaced by larger oner',
                  'new chain': blockchain.chain }
