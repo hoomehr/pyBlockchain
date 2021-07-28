@@ -9,48 +9,47 @@ import hashlib
 import json
 from os import error
 import requests 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request,render_template, redirect, url_for
+from flask_bootstrap import Bootstrap
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField
+from wtforms.validators import DataRequired
 from  uuid import uuid4
 from urllib.parse import urlparse
-
-
-
-# v2.x version - see https://stackoverflow.com/a/38501429/135978
-# for the 3.x version
 from apscheduler.schedulers.background import BackgroundScheduler
-from flask import Flask
-
 from werkzeug.wrappers import response
+from iteration_utilities import unique_everseen
 
 class Blockchain:
      def __init__(self):
          self.chain = []
-         self.transactions =[{
-             'sender' : '-',
-             'reciver' :'',
-             'amount':0,
-             'uuid' : 'millionbabe'}              
-             ]
+         self.transactions =[]
          #genesis block is below
+         self.unconf=[]
          self.create_block(proof = 0, previous_hash='1' )
          self.nodes = set()
          self.uid='burn'
          self.password=str
-         self.reason=str
          self.wallkey=0
          self.wallets=[(self.uid,self.wallkey)]
          self.uniq =[a_tuple[0] for a_tuple in self.wallets] 
          self.userpass=[(self.uid,self.password)]
+         self.conf=[]
+         
 
 
          
          
      def create_block(self, proof, previous_hash):
+         
          block={'index': len(self.chain) + 1,
                 'timestamp': str(datetime.datetime.now()),
                 'proof': proof,
                 'transactions' : self.transactions,
                 'previous_hash':previous_hash}
+         #somecodee
+         
+         
          self.transactions = []
          self.chain.append(block)
          return block
@@ -117,11 +116,11 @@ class Blockchain:
          return True
 
      def create_wallet(self,id):
-         new_id = id.strip()
-         wallKey= hashlib.sha256(new_id.encode()).hexdigest()
-         self.wallets.append((id,wallKey))
-         self.uniq.append(new_id)
-         new_wall=(id,wallKey)
+         
+         wallKey= hashlib.sha256((id.lower()).encode()).hexdigest()
+         self.wallets.append((id.lower(),wallKey))
+         self.uniq.append(id.lower())
+         new_wall=(id.lower(),wallKey)
          return new_wall
     
 
@@ -131,6 +130,8 @@ class Blockchain:
                                    'reciver': receiver,
                                    'amount' : amount,
                                    'uuid':uuid.uuid4().hex})
+         self.unconf+=self.transactions
+         self.unconf=list(unique_everseen(self.unconf))
          previous_block = self.get_previous_block()
          return previous_block['index'] + 1
      
@@ -145,7 +146,7 @@ class Blockchain:
          max_length= len(self.chain)
          
          for node in network:
-                response = requests.get(f'https://{node}/get_chain')
+                response = requests.get(f'http://{node}/get_chain')
                 if response.status_code == 200:
                     length = response.json()['length']
                     chain = response.json()['chain']
@@ -157,6 +158,41 @@ class Blockchain:
              return True
          return False
      
+     def syncts(self):
+         network=self.nodes
+         for node in network:
+                otherts = requests.get(f'http://{node}/tspool')
+                response= otherts.json()
+                self.transactions+=response
+                self.transactions=list(unique_everseen(self.transactions))
+                
+         return response
+     
+     def tconf(self):
+         self.unconf += self.transactions
+         self.unconf = list(unique_everseen(self.unconf))
+         
+         self.transactions =[]
+         
+
+         
+     def confiramtor(self):
+         confpool=[]
+         #self.replace_chain()
+         for z in self.chain:
+             self.conf += [elem1['uuid'] for elem1 in z['transactions']]
+             self.conf = list(unique_everseen(self.conf))
+                  
+         confpool += [elem2['uuid'] for elem2 in self.unconf if elem2['uuid'] not in self.conf]
+         
+         confpool = list(unique_everseen(confpool))
+         
+         return(self.conf,confpool)
+             
+     def unconfclean(self):
+         self.unconf=[]
+         
+      
          
      def create_bcrypt_hash(self,password,id):
          
@@ -192,14 +228,34 @@ class Blockchain:
 
          
          
-         
+
+class wallForm(FlaskForm):
+    wallid = StringField('Your permanet uniq id in the network', validators=[DataRequired()])
+    password = StringField('Please insert your permanet password?', validators=[DataRequired()])
+    passRe= StringField('Re-type your pernmanet password?', validators=[DataRequired()])
+    submit = SubmitField('Submit')   
+    
+class transform(FlaskForm):
+    wallid = StringField('Your unique id in the network', validators=[DataRequired()])
+    password = StringField('Please insert your password!', validators=[DataRequired()])
+    receiver= StringField('please insert the reciver idm', validators=[DataRequired()])
+    
+class utxo(FlaskForm):
+     wallid = StringField('Your unique id in the network', validators=[DataRequired()])
+     password = StringField('Please insert your password!', validators=[DataRequired()])
+    
+    
+    
+        
 # part 2 - Minig our blockchain
 # creating WebApp using Flask : 
     
-app = Flask(__name__)
 
+        
+ 
 
 def autoMiner():
+    blockchain.replace_chain()
     previous_block = blockchain.get_previous_block()
     previous_proof = previous_block['proof']
     proof = blockchain.proof_of_work(previous_proof)
@@ -231,22 +287,28 @@ def autoTransact():
     
     
 
-sched = BackgroundScheduler(daemon=True)
-sched.add_job(autoMiner,'interval',seconds=20,max_instances=10000)
-sched.add_job(autoNodeCheck,'interval',seconds=120,max_instances=100)
-sched.add_job(autoTransact,'interval',seconds=1,max_instances=10000)
-sched.start()
+#sched = BackgroundScheduler(daemon=True)
+#sched.add_job(autoMiner,'interval',seconds=120,max_instances=10000)
+#sched.add_job(autoNodeCheck,'interval',seconds=120,max_instances=100)
+#sched.add_job(autoTransact,'interval',seconds=10,max_instances=10000)
+#sched.start()
 
 #app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
 #address of node in port 5000
-node_address = str(uuid4()).replace('-', '')
+
 
 # creating blockchain from the class 
 
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'C2HWGVoMGfNTBsrYQg8EcMrdTimkZfAb'
+Bootstrap(app)
+node_address = str(uuid4()).replace('-', '')
 blockchain = Blockchain()
 
 @app.route('/mine_block', methods=['GET'])
 def mine_block():
+    #blockchain.replace_chain()
+    #blockchain.syncts()
     previous_block = blockchain.get_previous_block()
     previous_proof = previous_block['proof']
     proof = blockchain.proof_of_work(previous_proof)
@@ -314,17 +376,17 @@ def add_wallet_pass():
     json=request.get_json()
     id = json.get('id')
     inpassword = json.get('password')
-    for id in id :
-        if id is None:
-            return "no id!" , 400
-        elif id in blockchain.uniq :
-            return "Eror! The id is currently in use , please use another one"
-        else:
-            new=blockchain.create_wallet(id)
-            blockchain.create_bcrypt_hash(inpassword,id)
+    
+    if id is None:
+        return "no id!" , 400
+    elif id.lower() in blockchain.uniq :
+        return "Eror! The id is currently in use , please use another one"
+    else:
+        blockchain.create_wallet(id)
+        blockchain.create_bcrypt_hash(inpassword,id)
         
     
-    response={'message':'this is your wallet address for ever in this network! write it down and keep it safe!' + str(new) ,
+    response={'message':'this is your wallet address for ever in this network! write it down and keep it safe!' ,
     'list of wallets' : str(blockchain.wallets) ,
     'blockchain-uniqs' : str(blockchain.uniq),
     'pass' : str(blockchain.userpass)}
@@ -375,9 +437,54 @@ def utxo():
         return "empty id" , 400
     else :
        utxo = blockchain.check_utxo(id)
-        
+          
     return str(utxo), 200
 
+@app.route('/tspool', methods=['GET'])
+def share_poo():
+    response = blockchain.transactions
+    blockchain.tconf()
+    
+    return jsonify(response)
 
 
+@app.route('/sync', methods=['GET'])
+def sync():
+    x = blockchain.syncts()
+    
+    return str(x)
+
+@app.route('/confirm', methods=['GET'])
+def conf():
+    x=blockchain.confiramtor()
+    
+    return jsonify(x)
+
+@app.route('/walletform', methods=['GET', 'POST'])
+def index():
+
+    # you must tell the variable 'form' what you named the class, above
+    # 'form' is the variable name used in this template: index.html
+    newwallform = wallForm()
+    message = ""
+    walletkey=""
+    inputid=""
+    if newwallform.validate_on_submit():
+        inputid = newwallform.wallid.data
+        inputpass=newwallform.password.data
+        inputRepass=newwallform.passRe.data
+        if inputid.lower() in blockchain.uniq:
+            # empty the form field
+            message = "this id is already avaible in network, please chose a another one"
+        elif inputpass!=inputRepass :
+            "Your Password does not match the reType!"  
+            # redirect the browser to another route and template
+            #return redirect( url_for('actor', id=id) )
+        else:
+            blockchain.create_wallet(inputid)
+            blockchain.create_bcrypt_hash(inputpass,inputid) 
+            message = 'this is your wallet address for ever in this network! write it down and keep it safe!'
+            walletkey = dict(blockchain.wallets)[inputid]
+            
+    return render_template('index.html', form=newwallform,message=message,wallkey=walletkey,id=inputid)
 
